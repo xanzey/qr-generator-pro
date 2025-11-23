@@ -60,6 +60,7 @@ export default function QrGenerator() {
   const [currentQrType, setCurrentQrType] = useState<QrType>('text');
   const [qrColor, setQrColor] = useState('#000000');
   const [qrBgColor, setQrBgColor] = useState('#FFFFFF');
+  const [title, setTitle] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const methods = useForm<QrFormData>({
@@ -118,18 +119,23 @@ export default function QrGenerator() {
                     light: qrBgColor,
                 }
             });
-
-            // Draw logo in the center
+            
             const logo = new window.Image();
             const iconElement = typeConfig[currentQrType].icon;
-            const iconHtml = renderToStaticMarkup(iconElement);
-            // The renderToStaticMarkup might return a full SVG tag or just the inner elements
-            const svgContent = iconHtml.includes('<svg') 
-                ? iconHtml 
-                : `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${iconHtml}</svg>`;
             
-            const iconSvg = new Blob([svgContent], {type: 'image/svg+xml'});
+            // This function converts a React element to an SVG string.
+            const toSvgString = (el: React.ReactElement): string => {
+                const markup = renderToStaticMarkup(el);
+                // The renderToStaticMarkup might return a full SVG tag or just the inner elements
+                if (markup.startsWith('<svg')) {
+                    return markup;
+                }
+                // If it's just inner elements, wrap them in an SVG tag
+                const innerHtml = markup;
+                return `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${innerHtml}</svg>`;
+            };
 
+            const iconSvg = new Blob([toSvgString(iconElement)], {type: 'image/svg+xml'});
             const logoUrl = URL.createObjectURL(iconSvg);
 
             logo.src = logoUrl;
@@ -138,7 +144,6 @@ export default function QrGenerator() {
                 const logoX = (canvas.width - logoSize) / 2;
                 const logoY = (canvas.height - logoSize) / 2;
                 
-                // Clear a white square behind the logo
                 ctx.fillStyle = qrBgColor;
                 ctx.fillRect(logoX -5, logoY - 5, logoSize + 10, logoSize + 10);
                 
@@ -166,7 +171,7 @@ export default function QrGenerator() {
     if (!qrCodeUrl) return;
     const link = document.createElement('a');
     link.href = qrCodeUrl;
-    link.download = `qrcode-${currentQrType}.png`;
+    link.download = `${title.replace(/\s+/g, '-').toLowerCase() || currentQrType}-qrcode.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -211,36 +216,38 @@ export default function QrGenerator() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0 flex-grow space-y-6">
-              <form onSubmit={handleSubmit(() => {})}>
-                <div className="space-y-6">
-                  <div>
-                    <Label className="mb-2 block font-medium">QR Code Type</Label>
-                    <Select
-                      defaultValue={currentQrType}
-                      onValueChange={(value: QrType) => {
-                        setCurrentQrType(value);
-                        setValue('qrType', value);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select QR type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {qrTypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            <div className="flex items-center gap-2">
-                              {typeConfig[type].icon}
-                              <span>{typeConfig[type].label}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="mb-2 block font-medium">Content</Label>
-                     {renderFormFields()}
-                  </div>
+              <form onSubmit={handleSubmit(() => {})} className="space-y-6">
+                <div>
+                  <Label htmlFor="title" className="mb-2 block font-medium">Title</Label>
+                  <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. My Website" />
+                </div>
+                <div>
+                  <Label className="mb-2 block font-medium">QR Code Type</Label>
+                  <Select
+                    defaultValue={currentQrType}
+                    onValueChange={(value: QrType) => {
+                      setCurrentQrType(value);
+                      setValue('qrType', value);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select QR type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {qrTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          <div className="flex items-center gap-2">
+                            {typeConfig[type].icon}
+                            <span>{typeConfig[type].label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="mb-2 block font-medium">Content</Label>
+                   {renderFormFields()}
                 </div>
               </form>
                
@@ -263,20 +270,23 @@ export default function QrGenerator() {
             </CardFooter>
         </div>
         <div className="bg-primary/10 p-8 flex items-center justify-center">
-             <div 
-                className="w-64 h-64 rounded-lg shadow-inner flex items-center justify-center relative overflow-hidden"
-                style={{ backgroundColor: qrBgColor }}
-            >
-                <canvas ref={canvasRef} width="256" height="256" className="absolute hidden" />
-                {qrCodeUrl ? (
-                    <Image src={qrCodeUrl} alt="Generated QR Code" width={256} height={256} className="absolute inset-0"/>
-                ) : (
-                    <div className="text-center text-muted-foreground bg-white/80 p-4 rounded-md">
-                    <QrCode className="mx-auto h-16 w-16" />
-                    <p className="mt-2">Your QR code will appear here</p>
-                    </div>
-                )}
-            </div>
+             <div className="w-full max-w-sm rounded-lg bg-card shadow-lg p-6 flex flex-col items-center space-y-4">
+                {title && <h2 className="text-xl font-bold font-headline">{title}</h2>}
+                <div 
+                    className="w-64 h-64 rounded-lg shadow-inner flex items-center justify-center relative overflow-hidden"
+                    style={{ backgroundColor: qrBgColor }}
+                >
+                    <canvas ref={canvasRef} width="256" height="256" className="absolute hidden" />
+                    {qrCodeUrl ? (
+                        <Image src={qrCodeUrl} alt="Generated QR Code" width={256} height={256} className="absolute inset-0"/>
+                    ) : (
+                        <div className="text-center text-muted-foreground bg-white/80 p-4 rounded-md">
+                        <QrCode className="mx-auto h-16 w-16" />
+                        <p className="mt-2">Your QR code will appear here</p>
+                        </div>
+                    )}
+                </div>
+             </div>
         </div>
       </Card>
       </div>
