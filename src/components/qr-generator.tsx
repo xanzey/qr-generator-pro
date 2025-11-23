@@ -145,6 +145,14 @@ export default function QrGenerator() {
 
   const watchedValues = watch();
 
+  const sanitizePhoneNumber = (number: string) => {
+    let sanitized = number.replace(/[^0-9]/g, '');
+    if (sanitized.startsWith('91')) {
+        sanitized = sanitized.substring(2);
+    }
+    return '91' + sanitized;
+  }
+
   useEffect(() => {
     const generateQrCode = async () => {
       let dataToEncode = '';
@@ -157,12 +165,14 @@ export default function QrGenerator() {
           break;
         case 'whatsapp':
             if (watchedValues.whatsapp) {
-                const whatsappNumber = watchedValues.whatsapp.replace(/[^0-9]/g, '');
+                const whatsappNumber = sanitizePhoneNumber(watchedValues.whatsapp);
                 dataToEncode = `https://wa.me/${whatsappNumber}${watchedValues.message ? `?text=${encodeURIComponent(watchedValues.message)}` : ''}`;
             }
             break;
         case 'phone':
-          dataToEncode = `tel:${watchedValues.phone || ''}`;
+            if(watchedValues.phone) {
+                dataToEncode = `tel:+${sanitizePhoneNumber(watchedValues.phone)}`;
+            }
           break;
         case 'email':
           dataToEncode = `mailto:${watchedValues.email || ''}`;
@@ -173,10 +183,16 @@ export default function QrGenerator() {
           }
           break;
         case 'vcard':
-          dataToEncode = `BEGIN:VCARD\nVERSION:3.0\nN:${watchedValues.vcard_lastname || ''};${watchedValues.vcard_firstname || ''};;;\nFN:${watchedValues.vcard_firstname || ''} ${watchedValues.vcard_lastname || ''}\nTEL;TYPE=CELL:${watchedValues.vcard_phone || ''}\nEMAIL:${watchedValues.vcard_email || ''}\nORG:${watchedValues.vcard_company || ''}\nEND:VCARD`;
+          let vcardPhone = '';
+          if (watchedValues.vcard_phone) {
+            vcardPhone = `+${sanitizePhoneNumber(watchedValues.vcard_phone)}`;
+          }
+          dataToEncode = `BEGIN:VCARD\nVERSION:3.0\nN:${watchedValues.vcard_lastname || ''};${watchedValues.vcard_firstname || ''};;;\nFN:${watchedValues.vcard_firstname || ''} ${watchedValues.vcard_lastname || ''}\nTEL;TYPE=CELL:${vcardPhone}\nEMAIL:${watchedValues.vcard_email || ''}\nORG:${watchedValues.vcard_company || ''}\nEND:VCARD`;
           break;
         case 'sms':
-          dataToEncode = `smsto:${watchedValues.sms_phone || ''}:${encodeURIComponent(watchedValues.sms_message || '')}`;
+            if(watchedValues.sms_phone) {
+                dataToEncode = `smsto:+${sanitizePhoneNumber(watchedValues.sms_phone)}:${encodeURIComponent(watchedValues.sms_message || '')}`;
+            }
           break;
         case 'wifi':
           dataToEncode = `WIFI:T:${watchedValues.wifi_encryption || 'WPA'};S:${watchedValues.wifi_ssid || ''};P:${watchedValues.wifi_password || ''};;`;
@@ -225,13 +241,20 @@ export default function QrGenerator() {
             const iconElement = typeConfig[currentQrType].icon;
             
             const toSvgString = (el: React.ReactElement): string => {
-              if (!el) return '';
-              const props = el.props || {};
-              const children = props.children;
-              if (children && Array.isArray(children)) {
-                return `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${children.map((child: any) => `<${child.type} ${Object.entries(child.props).map(([key, val]) => `${key}="${val}"`).join(' ')}/>`).join('')}</svg>`;
-              }
-              return '';
+                if (!el) return '';
+                const { type, props } = el;
+                const children = props.children;
+            
+                if (typeof type === 'function') {
+                    // Handle functional components by rendering them
+                    return toSvgString(new (type as any)(props).render());
+                }
+            
+                const childrenContent = Array.isArray(children)
+                ? children.map((child: any) => `<${child.type} ${Object.entries(child.props).map(([key, val]) => `${key}="${val}"`).join(' ')}/>`).join('')
+                : '';
+
+                return `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${qrColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${childrenContent}</svg>`;
             };
 
             const iconSvg = new Blob([toSvgString(iconElement)], {type: 'image/svg+xml'});
@@ -340,12 +363,12 @@ export default function QrGenerator() {
       case 'whatsapp':
         return (
             <div className="space-y-4">
-                <Input {...register('whatsapp')} placeholder="Enter mobile number with country code" />
+                <Input {...register('whatsapp')} placeholder="Enter mobile number" />
                 <Textarea {...register('message')} placeholder="Optional: Pre-fill message" />
             </div>
         );
       case 'phone':
-        return <Input {...register('phone')} type="tel" placeholder="e.g. +11234567890" />;
+        return <Input {...register('phone')} type="tel" placeholder="e.g. 1234567890" />;
       case 'email':
         return <Input {...register('email')} type="email" placeholder="user@example.com" />;
       case 'instagram':
@@ -510,6 +533,3 @@ export default function QrGenerator() {
     </FormProvider>
   );
 }
-
-    
-    
