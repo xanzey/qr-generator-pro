@@ -2,7 +2,6 @@
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://<your-github-username>.github.io/qr-generator",
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
@@ -10,9 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d out -t true"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
