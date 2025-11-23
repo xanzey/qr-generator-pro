@@ -5,6 +5,8 @@ const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'qr-generator-pro';
 
 const nextConfig: NextConfig = {
   output: 'export',
+  basePath: isGithubActions ? `/${repo}` : '',
+  assetPrefix: isGithubActions ? `/${repo}/` : '',
   images: {
     unoptimized: true,
   },
