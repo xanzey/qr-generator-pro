@@ -148,7 +148,7 @@ export default function QrGenerator() {
   const sanitizePhoneNumber = (number: string) => {
     let sanitized = number.replace(/[^0-9]/g, '');
     if (sanitized.startsWith('91')) {
-        sanitized = sanitized.substring(2);
+        return sanitized;
     }
     return '91' + sanitized;
   }
@@ -171,7 +171,7 @@ export default function QrGenerator() {
             break;
         case 'phone':
             if(watchedValues.phone) {
-                dataToEncode = `tel:+${sanitizePhoneNumber(watchedValues.phone)}`;
+                dataToEncode = `tel:${sanitizePhoneNumber(watchedValues.phone)}`;
             }
           break;
         case 'email':
@@ -185,13 +185,13 @@ export default function QrGenerator() {
         case 'vcard':
           let vcardPhone = '';
           if (watchedValues.vcard_phone) {
-            vcardPhone = `+${sanitizePhoneNumber(watchedValues.vcard_phone)}`;
+            vcardPhone = sanitizePhoneNumber(watchedValues.vcard_phone);
           }
-          dataToEncode = `BEGIN:VCARD\nVERSION:3.0\nN:${watchedValues.vcard_lastname || ''};${watchedValues.vcard_firstname || ''};;;\nFN:${watchedValues.vcard_firstname || ''} ${watchedValues.vcard_lastname || ''}\nTEL;TYPE=CELL:${vcardPhone}\nEMAIL:${watchedValues.vcard_email || ''}\nORG:${watchedValues.vcard_company || ''}\nEND:VCARD`;
+          dataToEncode = `BEGIN:VCARD\nVERSION:3.0\nN:${watchedValues.vcard_lastname || ''};${watchedValues.vcard_firstname || ''}\nFN:${watchedValues.vcard_firstname || ''} ${watchedValues.vcard_lastname || ''}\nTEL;TYPE=CELL:${vcardPhone}\nEMAIL:${watchedValues.vcard_email || ''}\nORG:${watchedValues.vcard_company || ''}\nEND:VCARD`;
           break;
         case 'sms':
             if(watchedValues.sms_phone) {
-                dataToEncode = `smsto:+${sanitizePhoneNumber(watchedValues.sms_phone)}:${encodeURIComponent(watchedValues.sms_message || '')}`;
+                dataToEncode = `smsto:${sanitizePhoneNumber(watchedValues.sms_phone)}:${encodeURIComponent(watchedValues.sms_message || '')}`;
             }
           break;
         case 'wifi':
@@ -243,16 +243,19 @@ export default function QrGenerator() {
             const toSvgString = (el: React.ReactElement): string => {
                 if (!el) return '';
                 const { type, props } = el;
-                const children = props.children;
-            
-                if (typeof type === 'function') {
-                    // Handle functional components by rendering them
-                    return toSvgString(new (type as any)(props).render());
+                let childrenContent = '';
+                
+                if (props.children) {
+                    const children = Array.isArray(props.children) ? props.children : [props.children];
+                    childrenContent = children.map((child: any) => {
+                        if (typeof child === 'string') return child;
+                        if (!child || !child.type) return '';
+                        const childProps = Object.entries(child.props || {})
+                            .map(([key, val]) => `${key}="${val}"`)
+                            .join(' ');
+                        return `<${child.type} ${childProps}/>`;
+                    }).join('');
                 }
-            
-                const childrenContent = Array.isArray(children)
-                ? children.map((child: any) => `<${child.type} ${Object.entries(child.props).map(([key, val]) => `${key}="${val}"`).join(' ')}/>`).join('')
-                : '';
 
                 return `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${qrColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${childrenContent}</svg>`;
             };
