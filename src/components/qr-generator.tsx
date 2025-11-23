@@ -27,7 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Download,
   QrCode,
-  Link,
+  Link as LinkIcon,
   MessageSquare,
   Phone,
   Mail,
@@ -96,9 +96,9 @@ const schema = z.object({
   twitter_user: z.string().optional(),
   facebook_url: z.string().url().optional(),
   // Files
-  pdf_file: z.any().optional(),
-  mp3_file: z.any().optional(),
-  image_file: z.any().optional(),
+  pdf_url: z.string().url().optional(),
+  mp3_url: z.string().url().optional(),
+  image_url: z.string().url().optional(),
   // App Store
   app_store_ios: z.string().url().optional(),
   app_store_android: z.string().url().optional(),
@@ -108,7 +108,7 @@ type QrFormData = z.infer<typeof schema>;
 
 const typeConfig: Record<QrType, { label: string; icon: React.ReactElement }> = {
   text: { label: 'Text', icon: <Type /> },
-  url: { label: 'URL', icon: <Link /> },
+  url: { label: 'URL', icon: <LinkIcon /> },
   whatsapp: { label: 'WhatsApp', icon: <MessageSquare /> },
   phone: { label: 'Phone', icon: <Phone /> },
   email: { label: 'Email', icon: <Mail /> },
@@ -132,7 +132,6 @@ export default function QrGenerator() {
   const [qrColor, setQrColor] = useState('#000000');
   const [qrBgColor, setQrBgColor] = useState('#FFFFFF');
   const [title, setTitle] = useState('');
-  const [fileData, setFileData] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const methods = useForm<QrFormData>({
@@ -193,14 +192,15 @@ export default function QrGenerator() {
           dataToEncode = watchedValues.facebook_url || '';
           break;
         case 'pdf':
-        case 'mp3':
-        case 'image':
-          dataToEncode = fileData || '';
+          dataToEncode = watchedValues.pdf_url || '';
           break;
+        case 'mp3':
+            dataToEncode = watchedValues.mp3_url || '';
+            break;
+        case 'image':
+            dataToEncode = watchedValues.image_url || '';
+            break;
         case 'app_store':
-          // A bit of a hack for dual-purpose QR.
-          // For a real app, you'd host a page that redirects based on user agent.
-          // For now, we'll just prioritize iOS if both are filled.
           dataToEncode = watchedValues.app_store_ios || watchedValues.app_store_android || '';
           break;
       }
@@ -227,11 +227,6 @@ export default function QrGenerator() {
             
             const toSvgString = (el: React.ReactElement): string => {
                 const markup = renderToStaticMarkup(el);
-                // The following logic is to handle icons that don't have children directly
-                const childrenMatch = markup.match(/>(.*?)<\/svg>/);
-                if (childrenMatch && childrenMatch[1]) {
-                    return `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${childrenMatch[1]}</svg>`;
-                }
                 return `<?xml version="1.0" encoding="UTF-8"?>${markup}`;
             };
 
@@ -252,7 +247,7 @@ export default function QrGenerator() {
                 URL.revokeObjectURL(logoUrl);
             };
             logo.onerror = () => {
-                setQrCodeUrl(canvas.toDataURL('image/png')); // Still set URL even if logo fails
+                setQrCodeUrl(canvas.toDataURL('image/png'));
                 URL.revokeObjectURL(logoUrl);
             };
 
@@ -268,7 +263,7 @@ export default function QrGenerator() {
     };
 
     generateQrCode();
-  }, [watchedValues, qrColor, qrBgColor, currentQrType, fileData]);
+  }, [watchedValues, qrColor, qrBgColor, currentQrType]);
 
   const handleDownload = () => {
     if (!qrCodeUrl || !canvasRef.current) return;
@@ -334,17 +329,6 @@ export default function QrGenerator() {
     qrImg.src = qrCodeUrl;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFileData(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
   const renderFormFields = () => {
     switch (currentQrType) {
       case 'url':
@@ -411,11 +395,11 @@ export default function QrGenerator() {
       case 'facebook':
         return <Input {...register('facebook_url')} placeholder="https://facebook.com/your-profile" />;
       case 'pdf':
-        return <Input {...register('pdf_file')} type="file" accept=".pdf" onChange={handleFileChange} />;
+        return <Input {...register('pdf_url')} placeholder="https://example.com/your.pdf" />;
       case 'mp3':
-        return <Input {...register('mp3_file')} type="file" accept=".mp3" onChange={handleFileChange} />;
+        return <Input {...register('mp3_url')} placeholder="https://example.com/your.mp3" />;
       case 'image':
-        return <Input {...register('image_file')} type="file" accept="image/*" onChange={handleFileChange} />;
+        return <Input {...register('image_url')} placeholder="https://example.com/your-image.png" />;
       case 'app_store':
         return (
           <div className="space-y-4">
@@ -460,7 +444,6 @@ export default function QrGenerator() {
                     onValueChange={(value: QrType) => {
                       setCurrentQrType(value);
                       setValue('qrType', value);
-                      setFileData(null);
                     }}
                   >
                     <SelectTrigger>
@@ -526,3 +509,5 @@ export default function QrGenerator() {
     </FormProvider>
   );
 }
+
+    
