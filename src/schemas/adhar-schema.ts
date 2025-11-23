@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const adharSchema = z.object({
@@ -7,6 +8,7 @@ export const adharSchema = z.object({
   }),
   gender: z.enum(['Male', 'Female', 'Other'], { required_error: 'Gender is required.' }),
   adharNumber: z.string().regex(/^\d{4}\s\d{4}\s\d{4}$/, 'Invalid Aadhaar format (e.g., 1234 5678 9012).'),
+  vid: z.string().regex(/^(\d{4}\s){3}\d{4}$/, 'Invalid VID format (e.g., 1234 5678 9012 3456).').optional().or(z.literal('')),
   address: z.string().min(10, 'Address must be at least 10 characters long.'),
   photo: z.any().optional(),
   fontSize: z.number().min(8).max(16).default(10),
@@ -14,3 +16,5 @@ export const adharSchema = z.object({
 });
 
 export type AdharFormData = z.infer<typeof adharSchema>;
+
+    

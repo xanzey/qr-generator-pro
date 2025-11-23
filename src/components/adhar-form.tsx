@@ -142,6 +142,20 @@ export default function AdharForm({ onPhotoChange, onRefine, aiLoading }: AdharF
                 )}
               />
 
+               <FormField
+                control={form.control}
+                name="vid"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>VID (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="1234 5678 9012 3456" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="address"
@@ -230,3 +244,5 @@ export default function AdharForm({ onPhotoChange, onRefine, aiLoading }: AdharF
     </Card>
   );
 }
+
+    

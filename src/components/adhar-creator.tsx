@@ -32,6 +32,7 @@ export default function AdharCreator() {
       dob: undefined,
       fontSize: 10,
       showQrCode: true,
+      vid: '',
     },
   });
 
@@ -107,34 +108,36 @@ export default function AdharCreator() {
     }
 
     try {
-       // A4 size in mm: 210 x 297
       const pdf = new jsPDF({
-        orientation: 'portrait',
+        orientation: 'landscape',
         unit: 'mm',
         format: 'a4'
       });
 
       const canvas = await html2canvas(input, { 
-        scale: 3, // Higher scale for better quality
+        scale: 3, 
         useCORS: true,
-        logging: true,
+        logging: false,
         width: input.offsetWidth,
         height: input.offsetHeight
       });
 
       const imgData = canvas.toDataURL('image/png');
-      const imgProps = pdf.getImageProperties(imgData);
       
-      // Aadhar card standard size is 85.6mm x 53.98mm.
-      // The generated preview contains two parts, so height is doubled.
-      const cardWidth = 85.6;
-      const cardHeight = (imgProps.height * cardWidth) / imgProps.width;
+      // Standard A4 landscape dimensions: 297mm x 210mm
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      // Center the card on the A4 page
-      const x = (pdf.internal.pageSize.getWidth() - cardWidth) / 2;
-      const y = (pdf.internal.pageSize.getHeight() - cardHeight) / 2;
+      // The preview is roughly 2:1 aspect ratio (two cards side-by-side).
+      // Let's aim for a total width of 171.2mm (85.6mm * 2)
+      const cardBlockWidth = 190;
+      const cardBlockHeight = (canvas.height * cardBlockWidth) / canvas.width;
+
+      // Center the card block on the A4 page
+      const x = (pdfWidth - cardBlockWidth) / 2;
+      const y = (pdfHeight - cardBlockHeight) / 2;
       
-      pdf.addImage(imgData, 'PNG', x, y, cardWidth, cardHeight);
+      pdf.addImage(imgData, 'PNG', x, y, cardBlockWidth, cardBlockHeight);
       pdf.save(`${name.replace(/\s/g, '_') || 'adhar'}_card.pdf`);
 
     } catch (error) {
@@ -176,7 +179,7 @@ export default function AdharCreator() {
                     <AdharCardPreview photoUrl={photoUrl} />
                   </CardContent>
                   <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isDownloading}>
+                    <Button type="submit" className="w-full" disabled={isDownloading || !methods.formState.isValid}>
                       {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                       Download as PDF
                     </Button>
@@ -190,3 +193,5 @@ export default function AdharCreator() {
     </FormProvider>
   );
 }
+
+    
