@@ -26,6 +26,9 @@ jobs:
         env:
           GITHUB_ACTIONS: true
 
+      - name: Add .nojekyll file
+        run: touch ./out/.nojekyll
+
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
         with:
