@@ -78,7 +78,8 @@ export default function QrGenerator() {
           break;
         case 'whatsapp':
             if (watchedValues.whatsapp) {
-                dataToEncode = `https://wa.me/${watchedValues.whatsapp}${watchedValues.message ? `?text=${encodeURIComponent(watchedValues.message)}` : ''}`;
+                const whatsappNumber = watchedValues.whatsapp.startsWith('91') ? watchedValues.whatsapp : `91${watchedValues.whatsapp}`;
+                dataToEncode = `https://wa.me/${whatsappNumber}${watchedValues.message ? `?text=${encodeURIComponent(watchedValues.message)}` : ''}`;
             }
             break;
         case 'phone':
@@ -126,7 +127,7 @@ export default function QrGenerator() {
       case 'whatsapp':
         return (
             <div className="space-y-4">
-                <Input {...register('whatsapp')} placeholder="e.g. 11234567890 (no + or 00)" />
+                <Input {...register('whatsapp')} placeholder="Enter 10-digit mobile number" />
                 <Textarea {...register('message')} placeholder="Optional: Pre-fill message" />
             </div>
         );
@@ -210,4 +211,3 @@ export default function QrGenerator() {
     </FormProvider>
   );
 }
-
