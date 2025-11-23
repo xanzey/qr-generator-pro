@@ -2,7 +2,7 @@ import type {NextConfig} from 'next';
 
 const isGithubActions = process.env.GITHUB_ACTIONS === 'true'
 
-const repo = 'qr-generator' // Replace with your repository name
+const repo = 'qr-generator-pro' // Using the repo name from your description
 
 const nextConfig: NextConfig = {
   /* config options here */
