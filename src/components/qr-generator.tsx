@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -25,11 +24,47 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, QrCode, Link, MessageSquare, Phone, Mail, Instagram, Type } from 'lucide-react';
+import {
+  Download,
+  QrCode,
+  Link,
+  MessageSquare,
+  Phone,
+  Mail,
+  Instagram,
+  Type,
+  User,
+  Wifi,
+  Bitcoin,
+  Twitter,
+  Facebook,
+  File as FileIcon,
+  Music,
+  Image as ImageIcon,
+  ShoppingBag,
+  Smartphone,
+} from 'lucide-react';
 import Image from 'next/image';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-const qrTypes = ['text', 'url', 'whatsapp', 'phone', 'email', 'instagram'] as const;
+const qrTypes = [
+  'text',
+  'url',
+  'whatsapp',
+  'phone',
+  'email',
+  'instagram',
+  'vcard',
+  'sms',
+  'wifi',
+  'bitcoin',
+  'twitter',
+  'facebook',
+  'pdf',
+  'mp3',
+  'image',
+  'app_store',
+] as const;
 type QrType = (typeof qrTypes)[number];
 
 const schema = z.object({
@@ -41,6 +76,32 @@ const schema = z.object({
   email: z.string().email().optional(),
   message: z.string().optional(),
   instagram: z.string().optional(),
+  // vCard
+  vcard_firstname: z.string().optional(),
+  vcard_lastname: z.string().optional(),
+  vcard_phone: z.string().optional(),
+  vcard_email: z.string().email().optional(),
+  vcard_company: z.string().optional(),
+  // SMS
+  sms_phone: z.string().optional(),
+  sms_message: z.string().optional(),
+  // WiFi
+  wifi_ssid: z.string().optional(),
+  wifi_password: z.string().optional(),
+  wifi_encryption: z.enum(['WPA', 'WEP', 'nopass']).optional(),
+  // Bitcoin
+  btc_address: z.string().optional(),
+  btc_amount: z.string().optional(),
+  // Social
+  twitter_user: z.string().optional(),
+  facebook_url: z.string().url().optional(),
+  // Files
+  pdf_file: z.any().optional(),
+  mp3_file: z.any().optional(),
+  image_file: z.any().optional(),
+  // App Store
+  app_store_ios: z.string().url().optional(),
+  app_store_android: z.string().url().optional(),
 });
 
 type QrFormData = z.infer<typeof schema>;
@@ -52,6 +113,16 @@ const typeConfig: Record<QrType, { label: string; icon: React.ReactElement }> = 
   phone: { label: 'Phone', icon: <Phone /> },
   email: { label: 'Email', icon: <Mail /> },
   instagram: { label: 'Instagram', icon: <Instagram /> },
+  vcard: { label: 'vCard', icon: <User /> },
+  sms: { label: 'SMS', icon: <MessageSquare /> },
+  wifi: { label: 'WiFi', icon: <Wifi /> },
+  bitcoin: { label: 'Bitcoin', icon: <Bitcoin /> },
+  twitter: { label: 'Twitter', icon: <Twitter /> },
+  facebook: { label: 'Facebook', icon: <Facebook /> },
+  pdf: { label: 'PDF', icon: <FileIcon /> },
+  mp3: { label: 'MP3', icon: <Music /> },
+  image: { label: 'Image', icon: <ImageIcon /> },
+  app_store: { label: 'App Stores', icon: <ShoppingBag /> },
 };
 
 
@@ -61,12 +132,14 @@ export default function QrGenerator() {
   const [qrColor, setQrColor] = useState('#000000');
   const [qrBgColor, setQrBgColor] = useState('#FFFFFF');
   const [title, setTitle] = useState('');
+  const [fileData, setFileData] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const methods = useForm<QrFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       qrType: 'text',
+      wifi_encryption: 'WPA',
     },
   });
 
@@ -101,6 +174,35 @@ export default function QrGenerator() {
             dataToEncode = `https://instagram.com/${watchedValues.instagram.replace('@', '')}`;
           }
           break;
+        case 'vcard':
+          dataToEncode = `BEGIN:VCARD\nVERSION:3.0\nN:${watchedValues.vcard_lastname || ''};${watchedValues.vcard_firstname || ''}\nFN:${watchedValues.vcard_firstname || ''} ${watchedValues.vcard_lastname || ''}\nTEL;TYPE=CELL:${watchedValues.vcard_phone || ''}\nEMAIL:${watchedValues.vcard_email || ''}\nORG:${watchedValues.vcard_company || ''}\nEND:VCARD`;
+          break;
+        case 'sms':
+          dataToEncode = `smsto:${watchedValues.sms_phone || ''}:${watchedValues.sms_message || ''}`;
+          break;
+        case 'wifi':
+          dataToEncode = `WIFI:T:${watchedValues.wifi_encryption || 'WPA'};S:${watchedValues.wifi_ssid || ''};P:${watchedValues.wifi_password || ''};;`;
+          break;
+        case 'bitcoin':
+          dataToEncode = `bitcoin:${watchedValues.btc_address || ''}?amount=${watchedValues.btc_amount || ''}`;
+          break;
+        case 'twitter':
+          dataToEncode = `https://twitter.com/${(watchedValues.twitter_user || '').replace('@', '')}`;
+          break;
+        case 'facebook':
+          dataToEncode = watchedValues.facebook_url || '';
+          break;
+        case 'pdf':
+        case 'mp3':
+        case 'image':
+          dataToEncode = fileData || '';
+          break;
+        case 'app_store':
+          // A bit of a hack for dual-purpose QR.
+          // For a real app, you'd host a page that redirects based on user agent.
+          // For now, we'll just prioritize iOS if both are filled.
+          dataToEncode = watchedValues.app_store_ios || watchedValues.app_store_android || '';
+          break;
       }
       
       const canvas = canvasRef.current;
@@ -123,9 +225,13 @@ export default function QrGenerator() {
             const logo = new window.Image();
             const iconElement = typeConfig[currentQrType].icon;
             
-            // This function converts a React element to an SVG string.
             const toSvgString = (el: React.ReactElement): string => {
                 const markup = renderToStaticMarkup(el);
+                // The following logic is to handle icons that don't have children directly
+                const childrenMatch = markup.match(/>(.*?)<\/svg>/);
+                if (childrenMatch && childrenMatch[1]) {
+                    return `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${childrenMatch[1]}</svg>`;
+                }
                 return `<?xml version="1.0" encoding="UTF-8"?>${markup}`;
             };
 
@@ -145,7 +251,10 @@ export default function QrGenerator() {
                 setQrCodeUrl(canvas.toDataURL('image/png'));
                 URL.revokeObjectURL(logoUrl);
             };
-            logo.onerror = () => URL.revokeObjectURL(logoUrl);
+            logo.onerror = () => {
+                setQrCodeUrl(canvas.toDataURL('image/png')); // Still set URL even if logo fails
+                URL.revokeObjectURL(logoUrl);
+            };
 
         } catch (err) {
           console.error(err);
@@ -159,7 +268,7 @@ export default function QrGenerator() {
     };
 
     generateQrCode();
-  }, [watchedValues, qrColor, qrBgColor, currentQrType]);
+  }, [watchedValues, qrColor, qrBgColor, currentQrType, fileData]);
 
   const handleDownload = () => {
     if (!qrCodeUrl || !canvasRef.current) return;
@@ -224,6 +333,17 @@ export default function QrGenerator() {
     };
     qrImg.src = qrCodeUrl;
   };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFileData(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   
   const renderFormFields = () => {
     switch (currentQrType) {
@@ -245,6 +365,70 @@ export default function QrGenerator() {
         return <Input {...register('email')} type="email" placeholder="user@example.com" />;
       case 'instagram':
         return <Input {...register('instagram')} placeholder="Your Instagram username" />;
+       case 'vcard':
+        return (
+          <div className="space-y-4">
+            <Input {...register('vcard_firstname')} placeholder="First Name" />
+            <Input {...register('vcard_lastname')} placeholder="Last Name" />
+            <Input {...register('vcard_phone')} type="tel" placeholder="Phone" />
+            <Input {...register('vcard_email')} type="email" placeholder="Email" />
+            <Input {...register('vcard_company')} placeholder="Company" />
+          </div>
+        );
+      case 'sms':
+        return (
+          <div className="space-y-4">
+            <Input {...register('sms_phone')} type="tel" placeholder="Phone Number" />
+            <Textarea {...register('sms_message')} placeholder="SMS Message" />
+          </div>
+        );
+      case 'wifi':
+        return (
+          <div className="space-y-4">
+            <Input {...register('wifi_ssid')} placeholder="Network Name (SSID)" />
+            <Input {...register('wifi_password')} type="password" placeholder="Password" />
+            <Select onValueChange={(v) => setValue('wifi_encryption', v as any)} defaultValue="WPA">
+              <SelectTrigger>
+                <SelectValue placeholder="Encryption" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="WPA">WPA/WPA2</SelectItem>
+                <SelectItem value="WEP">WEP</SelectItem>
+                <SelectItem value="nopass">No Encryption</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      case 'bitcoin':
+        return (
+          <div className="space-y-4">
+            <Input {...register('btc_address')} placeholder="Bitcoin Address" />
+            <Input {...register('btc_amount')} type="number" placeholder="Amount (optional)" />
+          </div>
+        );
+      case 'twitter':
+        return <Input {...register('twitter_user')} placeholder="@username" />;
+      case 'facebook':
+        return <Input {...register('facebook_url')} placeholder="https://facebook.com/your-profile" />;
+      case 'pdf':
+        return <Input {...register('pdf_file')} type="file" accept=".pdf" onChange={handleFileChange} />;
+      case 'mp3':
+        return <Input {...register('mp3_file')} type="file" accept=".mp3" onChange={handleFileChange} />;
+      case 'image':
+        return <Input {...register('image_file')} type="file" accept="image/*" onChange={handleFileChange} />;
+      case 'app_store':
+        return (
+          <div className="space-y-4">
+             <div className="flex items-center gap-2">
+              <Smartphone className="text-gray-400"/>
+              <Input {...register('app_store_ios')} placeholder="Apple App Store URL" />
+             </div>
+             <div className="flex items-center gap-2">
+              <Smartphone className="text-green-500" />
+              <Input {...register('app_store_android')} placeholder="Google Play Store URL" />
+             </div>
+          </div>
+        );
       case 'text':
       default:
         return <Textarea {...register('text')} placeholder="Enter any text" />;
@@ -276,6 +460,7 @@ export default function QrGenerator() {
                     onValueChange={(value: QrType) => {
                       setCurrentQrType(value);
                       setValue('qrType', value);
+                      setFileData(null);
                     }}
                   >
                     <SelectTrigger>
