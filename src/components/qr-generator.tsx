@@ -145,7 +145,8 @@ export default function QrGenerator() {
 
   const watchedValues = watch();
 
-  const sanitizePhoneNumber = (number: string) => {
+  const sanitizePhoneNumber = (number: string | undefined) => {
+    if (!number) return '';
     let sanitized = number.replace(/[^0-9]/g, '');
     if (sanitized.startsWith('91')) {
         return sanitized;
@@ -183,10 +184,7 @@ export default function QrGenerator() {
           }
           break;
         case 'vcard':
-          let vcardPhone = '';
-          if (watchedValues.vcard_phone) {
-            vcardPhone = sanitizePhoneNumber(watchedValues.vcard_phone);
-          }
+          const vcardPhone = sanitizePhoneNumber(watchedValues.vcard_phone);
           dataToEncode = `BEGIN:VCARD\nVERSION:3.0\nN:${watchedValues.vcard_lastname || ''};${watchedValues.vcard_firstname || ''}\nFN:${watchedValues.vcard_firstname || ''} ${watchedValues.vcard_lastname || ''}\nTEL;TYPE=CELL:${vcardPhone}\nEMAIL:${watchedValues.vcard_email || ''}\nORG:${watchedValues.vcard_company || ''}\nEND:VCARD`;
           break;
         case 'sms':
@@ -225,6 +223,8 @@ export default function QrGenerator() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      ctx.clearRect(0,0,canvas.width, canvas.height);
+
       if (dataToEncode) {
         try {
             await QRCode.toCanvas(canvas, dataToEncode, {
@@ -242,18 +242,20 @@ export default function QrGenerator() {
             
             const toSvgString = (el: React.ReactElement): string => {
                 if (!el) return '';
-                const { type, props } = el;
+                const { type: tag, props } = el;
+                const children = props.children;
                 let childrenContent = '';
-                
-                if (props.children) {
-                    const children = Array.isArray(props.children) ? props.children : [props.children];
-                    childrenContent = children.map((child: any) => {
+
+                if (children) {
+                    const childArray = Array.isArray(children) ? children : [children];
+                    childrenContent = childArray.map((child: any) => {
                         if (typeof child === 'string') return child;
                         if (!child || !child.type) return '';
+                        
                         const childProps = Object.entries(child.props || {})
                             .map(([key, val]) => `${key}="${val}"`)
                             .join(' ');
-                        return `<${child.type} ${childProps}/>`;
+                        return `<${child.type} ${childProps}></${child.type}>`;
                     }).join('');
                 }
 
@@ -270,14 +272,14 @@ export default function QrGenerator() {
                 const logoY = (canvas.height - logoSize) / 2;
                 
                 ctx.fillStyle = qrBgColor;
-                ctx.fillRect(logoX -5, logoY - 5, logoSize + 10, logoSize + 10);
+                ctx.fillRect(logoX - 5, logoY - 5, logoSize + 10, logoSize + 10);
                 
                 ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
                 setQrCodeUrl(canvas.toDataURL('image/png'));
                 URL.revokeObjectURL(logoUrl);
             };
             logo.onerror = () => {
-                setQrCodeUrl(canvas.toDataURL('image/png'));
+                setQrCodeUrl(canvas.toDataURL('image/png')); // Fallback to QR without logo
                 URL.revokeObjectURL(logoUrl);
             };
 
@@ -288,7 +290,6 @@ export default function QrGenerator() {
         }
       } else {
         setQrCodeUrl('');
-        ctx.clearRect(0,0,canvas.width, canvas.height);
       }
     };
 
@@ -516,7 +517,7 @@ export default function QrGenerator() {
              <div className="w-full max-w-sm rounded-lg bg-card shadow-lg p-6 flex flex-col items-center space-y-4">
                 {title && <h2 className="text-xl font-bold font-headline">{title}</h2>}
                 <div 
-                    className="w-64 h-64 rounded-lg shadow-inner flex items-center justify-center relative overflow-hidden"
+                    className="w-64 h-64 rounded-lg bg-card shadow-inner flex items-center justify-center relative overflow-hidden"
                     style={{ backgroundColor: qrBgColor }}
                 >
                     <canvas ref={canvasRef} width="256" height="256" className="absolute hidden" />
@@ -536,3 +537,5 @@ export default function QrGenerator() {
     </FormProvider>
   );
 }
+
+    
