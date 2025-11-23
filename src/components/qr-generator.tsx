@@ -45,6 +45,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import Image from 'next/image';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 const qrTypes = [
   'text',
@@ -147,11 +148,14 @@ export default function QrGenerator() {
 
   const sanitizePhoneNumber = (number: string | undefined) => {
     if (!number) return '';
-    let sanitized = number.replace(/[^0-9]/g, '');
-    if (sanitized.startsWith('91')) {
+    let sanitized = number.replace(/[^0-9+]/g, '');
+    if (sanitized.startsWith('+91')) {
         return sanitized;
     }
-    return '91' + sanitized;
+    if (sanitized.startsWith('91')) {
+        return '+' + sanitized;
+    }
+    return '+91' + sanitized.replace('+', '');
   }
 
   useEffect(() => {
@@ -166,7 +170,7 @@ export default function QrGenerator() {
           break;
         case 'whatsapp':
             if (watchedValues.whatsapp) {
-                const whatsappNumber = sanitizePhoneNumber(watchedValues.whatsapp);
+                const whatsappNumber = (sanitizePhoneNumber(watchedValues.whatsapp) || '').replace('+', '');
                 dataToEncode = `https://wa.me/${whatsappNumber}${watchedValues.message ? `?text=${encodeURIComponent(watchedValues.message)}` : ''}`;
             }
             break;
@@ -240,30 +244,10 @@ export default function QrGenerator() {
             const logo = new window.Image();
             const iconElement = typeConfig[currentQrType].icon;
             
-            const toSvgString = (el: React.ReactElement): string => {
-                if (!el) return '';
-                const { type: tag, props } = el;
-                const children = props.children;
-                let childrenContent = '';
-
-                if (children) {
-                    const childArray = Array.isArray(children) ? children : [children];
-                    childrenContent = childArray.map((child: any) => {
-                        if (typeof child === 'string') return child;
-                        if (!child || !child.type) return '';
-                        
-                        const childProps = Object.entries(child.props || {})
-                            .map(([key, val]) => `${key}="${val}"`)
-                            .join(' ');
-                        return `<${child.type} ${childProps}></${child.type}>`;
-                    }).join('');
-                }
-
-                return `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${qrColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${childrenContent}</svg>`;
-            };
-
-            const iconSvg = new Blob([toSvgString(iconElement)], {type: 'image/svg+xml'});
-            const logoUrl = URL.createObjectURL(iconSvg);
+            // This is the corrected and robust way to create the logo
+            const svgString = renderToStaticMarkup(React.cloneElement(iconElement, { color: qrColor, size: 24 }));
+            const svg = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const logoUrl = URL.createObjectURL(svg);
 
             logo.src = logoUrl;
             logo.onload = () => {
@@ -278,7 +262,8 @@ export default function QrGenerator() {
                 setQrCodeUrl(canvas.toDataURL('image/png'));
                 URL.revokeObjectURL(logoUrl);
             };
-            logo.onerror = () => {
+            logo.onerror = (e) => {
+                console.error("Logo failed to load", e);
                 setQrCodeUrl(canvas.toDataURL('image/png')); // Fallback to QR without logo
                 URL.revokeObjectURL(logoUrl);
             };
@@ -537,5 +522,3 @@ export default function QrGenerator() {
     </FormProvider>
   );
 }
-
-    
