@@ -1,11 +1,9 @@
 import type {NextConfig} from 'next';
 
-const isGithubActions = process.env.GITHUB_ACTIONS === 'true'
-
-const repo = 'qr-generator-pro' // Using the repo name from your description
+const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
+const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'qr-generator-pro';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   output: 'export',
   basePath: isGithubActions ? `/${repo}` : '',
   assetPrefix: isGithubActions ? `/${repo}/` : '',
