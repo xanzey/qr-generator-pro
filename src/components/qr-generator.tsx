@@ -126,13 +126,7 @@ export default function QrGenerator() {
             // This function converts a React element to an SVG string.
             const toSvgString = (el: React.ReactElement): string => {
                 const markup = renderToStaticMarkup(el);
-                // The renderToStaticMarkup might return a full SVG tag or just the inner elements
-                if (markup.startsWith('<svg')) {
-                    return markup;
-                }
-                // If it's just inner elements, wrap them in an SVG tag
-                const innerHtml = markup;
-                return `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${innerHtml}</svg>`;
+                return `<?xml version="1.0" encoding="UTF-8"?>${markup}`;
             };
 
             const iconSvg = new Blob([toSvgString(iconElement)], {type: 'image/svg+xml'});
@@ -168,13 +162,67 @@ export default function QrGenerator() {
   }, [watchedValues, qrColor, qrBgColor, currentQrType]);
 
   const handleDownload = () => {
-    if (!qrCodeUrl) return;
-    const link = document.createElement('a');
-    link.href = qrCodeUrl;
-    link.download = `${title.replace(/\s+/g, '-').toLowerCase() || currentQrType}-qrcode.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!qrCodeUrl || !canvasRef.current) return;
+
+    const downloadCanvas = document.createElement('canvas');
+    const ctx = downloadCanvas.getContext('2d');
+    if (!ctx) return;
+
+    const qrImageSize = 256;
+    const padding = 40;
+    const titleHeight = title ? 60 : 0;
+    
+    downloadCanvas.width = qrImageSize + padding * 2;
+    downloadCanvas.height = qrImageSize + padding * 2 + titleHeight;
+
+    // Background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
+
+    // Title
+    if (title) {
+        ctx.font = '20px "Inter", sans-serif';
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'center';
+        ctx.fillText(title, downloadCanvas.width / 2, padding + 20);
+    }
+    
+    // QR Code Image
+    const qrImg = new window.Image();
+    qrImg.onload = () => {
+        const cardX = padding;
+        const cardY = padding + titleHeight;
+        const cardWidth = qrImageSize;
+        const cardHeight = qrImageSize;
+
+        // Draw a rounded rectangle for the card effect
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(cardX + 12, cardY);
+        ctx.lineTo(cardX + cardWidth - 12, cardY);
+        ctx.quadraticCurveTo(cardX + cardWidth, cardY, cardX + cardWidth, cardY + 12);
+        ctx.lineTo(cardX + cardWidth, cardY + cardHeight - 12);
+        ctx.quadraticCurveTo(cardX + cardWidth, cardY + cardHeight, cardX + cardWidth - 12, cardY + cardHeight);
+        ctx.lineTo(cardX + 12, cardY + cardHeight);
+        ctx.quadraticCurveTo(cardX, cardY + cardHeight, cardX, cardY + cardHeight - 12);
+        ctx.lineTo(cardX, cardY + 12);
+        ctx.quadraticCurveTo(cardX, cardY, cardX + 12, cardY);
+        ctx.closePath();
+        ctx.clip();
+
+        // Draw the QR image inside the rounded rectangle
+        ctx.drawImage(qrImg, cardX, cardY, cardWidth, cardHeight);
+        ctx.restore();
+
+        const finalUrl = downloadCanvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = finalUrl;
+        link.download = `${title.replace(/\s+/g, '-').toLowerCase() || currentQrType}-qrcode.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    qrImg.src = qrCodeUrl;
   };
   
   const renderFormFields = () => {
@@ -293,4 +341,3 @@ export default function QrGenerator() {
     </FormProvider>
   );
 }
-
