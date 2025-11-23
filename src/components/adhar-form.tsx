@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useFormContext, Controller } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,8 +23,8 @@ import type { AdharFormData } from "@/schemas/adhar-schema";
 
 type AdharFormProps = {
   onPhotoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRefine: (field: 'name' | 'address') => Promise<void>;
-  aiLoading: 'name' | 'address' | null;
+  onRefine: () => Promise<void>;
+  aiLoading: boolean;
 };
 
 export default function AdharForm({ onPhotoChange, onRefine, aiLoading }: AdharFormProps) {
@@ -33,7 +33,22 @@ export default function AdharForm({ onPhotoChange, onRefine, aiLoading }: AdharF
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="font-headline">AdharPrint Pro</CardTitle>
+        <div className="flex justify-between items-center">
+            <CardTitle className="font-headline">AdharPrint Pro</CardTitle>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={onRefine} disabled={aiLoading}>
+                        {aiLoading ? <Loader2 className="mr-2 animate-spin" /> : <Sparkles className="mr-2 text-accent h-4 w-4" />}
+                        Refine with AI
+                    </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                    <p>Refine names and addresses using AI</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="details">
@@ -41,35 +56,36 @@ export default function AdharForm({ onPhotoChange, onRefine, aiLoading }: AdharF
             <TabsTrigger value="details">Card Details</TabsTrigger>
             <TabsTrigger value="formatting">Formatting</TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="pt-4">
+          <TabsContent value="details" className="pt-6">
             <div className="space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <div className="flex items-center gap-2">
-                      <FormControl>
-                        <Input placeholder="e.g. Rohan Sharma" {...field} />
-                      </FormControl>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="icon" onClick={() => onRefine('name')} disabled={!!aiLoading}>
-                              {aiLoading === 'name' ? <Loader2 className="animate-spin" /> : <Sparkles className="text-accent" />}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Refine with AI</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Full Name (English)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. Rohan Sharma" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="nameHindi"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Full Name (Hindi)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. रोहन शर्मा" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
@@ -128,61 +144,62 @@ export default function AdharForm({ onPhotoChange, onRefine, aiLoading }: AdharF
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="adharNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Aadhaar Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="1234 5678 9012" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="adharNumber"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Aadhaar Number</FormLabel>
+                        <FormControl>
+                        <Input placeholder="1234 5678 9012" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="vid"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>VID (Optional)</FormLabel>
+                        <FormControl>
+                        <Input placeholder="1234 5678 9012 3456" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
 
-               <FormField
-                control={form.control}
-                name="vid"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>VID (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="1234 5678 9012 3456" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Address (English)</FormLabel>
+                        <FormControl>
+                            <Textarea placeholder="Full English Address..." className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address</FormLabel>
-                    <div className="flex items-center gap-2">
-                      <FormControl>
-                        <Textarea placeholder="Full Address..." className="min-h-[100px]" {...field} />
-                      </FormControl>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="icon" onClick={() => onRefine('address')} disabled={!!aiLoading}>
-                              {aiLoading === 'address' ? <Loader2 className="animate-spin" /> : <Sparkles className="text-accent" />}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Refine with AI</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                    control={form.control}
+                    name="addressHindi"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Address (Hindi)</FormLabel>
+                        <FormControl>
+                            <Textarea placeholder="पूरा हिंदी पता..." className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
               
               <FormField
                 control={form.control}
@@ -202,7 +219,7 @@ export default function AdharForm({ onPhotoChange, onRefine, aiLoading }: AdharF
               />
             </div>
           </TabsContent>
-          <TabsContent value="formatting" className="pt-4 space-y-6">
+          <TabsContent value="formatting" className="pt-6 space-y-6">
             <FormField
               control={form.control}
               name="fontSize"
@@ -244,5 +261,3 @@ export default function AdharForm({ onPhotoChange, onRefine, aiLoading }: AdharF
     </Card>
   );
 }
-
-    

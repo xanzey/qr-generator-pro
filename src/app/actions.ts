@@ -10,7 +10,6 @@ export async function refineDetailsAction(input: RefineAdharDetailsInput) {
     return result;
   } catch (error) {
     console.error('Error refining details:', error);
-    // Optionally return a more specific error message to the client
     return null;
   }
 }

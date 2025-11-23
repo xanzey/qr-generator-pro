@@ -23,7 +23,7 @@ export default function AdharCardPreview({ photoUrl }: AdharCardPreviewProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   const watchedData = watch();
-  const { name, dob, gender, adharNumber, address, showQrCode, fontSize, vid } = watchedData;
+  const { name, nameHindi, dob, gender, adharNumber, address, addressHindi, showQrCode, fontSize, vid } = watchedData;
 
   const userPhoto = PlaceHolderImages.find(p => p.id === 'user-photo');
 
@@ -32,8 +32,8 @@ export default function AdharCardPreview({ photoUrl }: AdharCardPreviewProps) {
         const dataToEncode = `Name: ${name || ''}\nDOB: ${dob ? format(dob, 'dd/MM/yyyy') : ''}\nGender: ${gender || ''}\nAadhaar: ${adharNumber || ''}\nAddress: ${address || ''}`;
         const options = {
             errorCorrectionLevel: 'M' as const,
-            margin: 2,
-            width: 200, // Increased size for better quality
+            margin: 1,
+            width: 80,
             color: {
                 dark: '#000000',
                 light: '#FFFFFF',
@@ -66,33 +66,60 @@ export default function AdharCardPreview({ photoUrl }: AdharCardPreviewProps) {
       <CardContent className="p-0">
         <div id="adhar-preview" className="bg-white text-black text-xs leading-tight">
           
+          {/* Top foldable part */}
           <div className="border-b-2 border-dashed border-gray-400 p-1 flex">
-             {/* Left side - Front of the card */}
-            <div className="w-1/2 p-2 border-r-2 border-dashed border-gray-400">
+             <div className="w-1/4 flex flex-col justify-between items-center text-center p-1 border-r-2 border-dashed border-gray-400">
+                <Image src="https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/250px-Aadhaar_Logo.svg.png" alt="Aadhaar Logo" width={80} height={40} className="mt-2"/>
+                <div className="text-[7px] leading-tight">
+                    <p>Aadhaar is proof of identity, not of citizenship or date of birth. It should be used with verification.</p>
+                    <p className="mt-1">आधार पहचान का प्रमाण है, नागरिकता या जन्मतिथि का नहीं। इसका उपयोग सत्यापन के साथ किया जाना चाहिए।</p>
+                </div>
+             </div>
+             <div className="w-3/4 p-2">
+                <div className="flex">
+                  <div className="w-2/3 pr-2">
+                    <p className="text-[9px] font-bold">पता: <span className="font-normal">{addressHindi || 'आपका पूरा पता यहाँ...'}</span></p>
+                    <p className="text-[9px] font-bold mt-1">Address: <span className="font-normal uppercase">{address || 'Your full address here...'}</span></p>
+                  </div>
+                  <div className="w-1/3 text-center">
+                    {showQrCode && (
+                        <div className="w-24 h-24 flex-shrink-0 mx-auto">
+                        {qrCodeUrl ? (
+                            <Image src={qrCodeUrl} alt="QR Code" width={96} height={96} />
+                        ) : (
+                            <Skeleton className="w-24 h-24" />
+                        )}
+                        </div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-center mt-1">
+                    <p className="text-xl font-mono tracking-wider font-bold">
+                        {adharNumber || 'XXXX XXXX XXXX'}
+                    </p>
+                    {vid && <p className="text-[9px] font-mono tracking-wider">VID: {vid}</p>}
+                </div>
+             </div>
+          </div>
+          
+          {/* Main card part */}
+          <div className="p-1 flex">
+            {/* Left side - Front of the card */}
+            <div className="w-full p-2">
                 <header className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1">
-                        <EmblemIcon className="w-6 h-6" />
+                        <EmblemIcon className="w-8 h-8" />
                         <div>
-                        <p className="font-bold font-headline text-[8px] text-orange-500 -mb-1">भारत सरकार</p>
-                        <p className="text-[7px] font-headline text-green-700">Government of India</p>
+                        <p className="font-bold font-headline text-[9px] text-orange-500 -mb-1">भारत सरकार</p>
+                        <p className="text-[8px] font-headline text-green-700">Government of India</p>
                         </div>
                     </div>
                     <div className="relative">
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-red-500 opacity-20 blur-sm rounded-full"></div>
-                      <Image src="https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/250px-Aadhaar_Logo.svg.png" alt="Aadhaar Logo" width={50} height={25} />
+                      <Image src="https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/250px-Aadhaar_Logo.svg.png" alt="Aadhaar Logo" width={60} height={30} />
                     </div>
                 </header>
                 <div className="grid grid-cols-12 gap-2">
-                    <div className="col-span-4 relative flex items-center justify-center">
-                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                            <Image 
-                                src={photoUrl || userPhoto?.imageUrl || '/placeholder.png'} 
-                                alt="Ghost photo"
-                                width={50}
-                                height={66}
-                                className="object-cover opacity-20"
-                            />
-                        </div>
+                    <div className="col-span-3 flex items-center justify-center">
                         <Image
                             src={photoUrl || userPhoto?.imageUrl || '/placeholder.png'}
                             alt={name || "User photo"}
@@ -101,79 +128,63 @@ export default function AdharCardPreview({ photoUrl }: AdharCardPreviewProps) {
                             className="object-cover border-2 border-gray-200 z-10"
                             data-ai-hint={userPhoto?.imageHint || "person portrait"}
                         />
-                         <p className="absolute -left-5 top-0 bottom-0 text-[8px] font-bold transform -rotate-90 origin-center w-max h-min my-auto">Aadhaar no. issued: 12/10/2016</p>
                     </div>
-                    <div className="col-span-8 space-y-1" style={textSizeStyle}>
+                    <div className="col-span-9 space-y-1.5 pl-2" style={textSizeStyle}>
                          <div>
-                            <p className="font-bold font-headline text-[10px]">{name || 'आपका नाम'}</p>
-                            <p className="font-bold font-headline uppercase text-[10px]">{name || 'Your Name'}</p>
+                            <p className="font-bold font-headline text-[11px]">{nameHindi || 'आपका नाम'}</p>
+                            <p className="font-bold font-headline uppercase text-[11px]">{name || 'Your Name'}</p>
                         </div>
                         <div>
-                            <p className="text-[9px]">जन्म तिथि / DOB: <span className="font-bold">{dob ? format(dob, 'dd/MM/yyyy') : 'DD/MM/YYYY'}</span></p>
+                            <p className="text-[10px]">जन्म तिथि / DOB: <span className="font-bold">{dob ? format(dob, 'dd/MM/yyyy') : 'DD/MM/YYYY'}</span></p>
                         </div>
                         <div>
-                            <p className="text-[9px]">{gender ? genderHindi[gender] : 'लिंग'} / <span className="uppercase">{gender || 'GENDER'}</span></p>
+                            <p className="text-[10px]">{gender ? genderHindi[gender] : 'लिंग'} / <span className="uppercase">{gender || 'GENDER'}</span></p>
+                        </div>
+                         <div className="pt-2">
+                            <p className="text-2xl font-mono tracking-wider font-bold">
+                                {adharNumber || 'XXXX XXXX XXXX'}
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="border border-red-600 p-1 mt-2 text-[7px] leading-tight text-center">
-                    <p>आधार पहचान का प्रमाण है, नागरिकता या जन्मतिथि का नहीं। इसका उपयोग सत्यापन (ऑनलाइन प्रमाणीकरण, या क्यूआर कोड/ऑफ़लाइन एक्सएमएल की स्कैनिंग) के साथ किया जाना चाहिए।</p>
-                    <p>Aadhaar is proof of identity, not of citizenship or date of birth. It should be used with verification (online authentication, or scanning of QR code / offline XML).</p>
-                </div>
-                 <div className="text-center mt-2">
-                    <p className="text-lg font-mono tracking-wider font-bold">
-                        {adharNumber || 'XXXX XXXX XXXX'}
-                    </p>
-                </div>
-                 <div className="mt-1 pt-1 border-t-2 border-red-600">
+                 <div className="mt-2 pt-1 border-t-4" style={{borderImage: 'linear-gradient(to right, #F47B20, #138808) 1'}}>
                     <p className="text-[10px] font-bold text-red-600 text-center">मेरा आधार, मेरी पहचान</p>
                 </div>
             </div>
-            
-            {/* Right side - Back of the card */}
-            <div className="w-1/2 p-2">
-                <header className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1">
-                        <EmblemIcon className="w-6 h-6" />
-                        <div>
-                            <p className="font-bold font-headline text-[8px] -mb-1">भारतीय विशिष्ट पहचान प्राधिकरण</p>
-                            <p className="text-[7px] font-headline text-green-700">Unique Identification Authority of India</p>
-                        </div>
-                    </div>
-                     <Image src="https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Aadhaar_Logo.svg/250px-Aadhaar_Logo.svg.png" alt="Aadhaar Logo" width={50} height={25} />
-                </header>
-                <div className="flex gap-2">
-                    <p className="text-[8px] font-bold transform -rotate-90 origin-top-left -ml-2 mt-16 w-max h-min">Details as on: {format(new Date(), 'dd/MM/yyyy')}</p>
-                    <div className="flex-1">
-                        <div className="text-[9px]">
-                            <p className="font-bold">पता:</p>
-                            <p>{address || 'Your full address here...'}</p>
-                        </div>
-                        <div className="mt-2 text-[9px]">
-                            <p className="font-bold">Address:</p>
-                            <p className="uppercase">{address || 'Your full address here...'}</p>
-                        </div>
-                    </div>
-                    {showQrCode && (
-                        <div className="w-24 h-24 flex-shrink-0">
-                        {qrCodeUrl ? (
-                            <Image src={qrCodeUrl} alt="QR Code" width={96} height={96} />
-                        ) : (
-                            <Skeleton className="w-24 h-24" />
-                        )}
-                        </div>
-                    )}
-                </div>
+          </div>
+          
+          <div className="flex items-center text-gray-500 my-1 px-3">
+            <Scissors className="w-3 h-3 mr-2"/>
+            <p className="text-[8px]">इस भाग को काट लें / Cut along this line</p>
+          </div>
 
-                <div className="text-center mt-2">
-                    <p className="text-lg font-mono tracking-wider font-bold">
-                        {adharNumber || 'XXXX XXXX XXXX'}
-                    </p>
-                    {vid && <p className="text-[9px] font-mono tracking-wider">VID: {vid}</p>}
+          {/* Bottom Back Part */}
+          <div className="border-t-2 border-dashed border-gray-400 p-2">
+             <div className="flex">
+                <div className="w-2/3 pr-2">
+                    <p className="text-[9px] font-bold">पता: <span className="font-normal">{addressHindi || 'आपका पूरा पता यहाँ...'}</span></p>
+                    <p className="text-[9px] font-bold mt-1">Address: <span className="font-normal uppercase">{address || 'Your full address here...'}</span></p>
                 </div>
-
-                <div className="mt-2 pt-2 border-t border-gray-300 flex justify-between items-center text-[8px]">
+                <div className="w-1/3 text-center">
+                  {showQrCode && (
+                      <div className="w-24 h-24 flex-shrink-0 mx-auto">
+                      {qrCodeUrl ? (
+                          <Image src={qrCodeUrl} alt="QR Code" width={96} height={96} />
+                      ) : (
+                          <Skeleton className="w-24 h-24" />
+                      )}
+                      </div>
+                  )}
+                </div>
+              </div>
+              <div className="text-center mt-1">
+                  <p className="text-xl font-mono tracking-wider font-bold">
+                      {adharNumber || 'XXXX XXXX XXXX'}
+                  </p>
+                  {vid && <p className="text-[9px] font-mono tracking-wider">VID: {vid}</p>}
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-300 flex justify-between items-center text-[8px]">
                     <div className="flex items-center gap-1">
                         <Phone className="w-3 h-3"/>
                         <span>1947</span>
@@ -187,13 +198,6 @@ export default function AdharCardPreview({ photoUrl }: AdharCardPreviewProps) {
                         <span>www.uidai.gov.in</span>
                     </div>
                 </div>
-
-            </div>
-          </div>
-          
-          <div className="flex items-center text-gray-500 my-1 px-3">
-            <Scissors className="w-3 h-3 mr-2"/>
-            <p className="text-[8px]">इस भाग को काट लें / Cut along this line</p>
           </div>
 
         </div>
@@ -201,5 +205,3 @@ export default function AdharCardPreview({ photoUrl }: AdharCardPreviewProps) {
     </Card>
   );
 }
-
-    

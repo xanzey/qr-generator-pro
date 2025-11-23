@@ -17,7 +17,7 @@ import { Download, Loader2 } from "lucide-react";
 
 export default function AdharCreator() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState<'name' | 'address' | null>(null);
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
   
@@ -26,8 +26,10 @@ export default function AdharCreator() {
     mode: 'onChange',
     defaultValues: {
       name: '',
+      nameHindi: '',
       adharNumber: '',
       address: '',
+      addressHindi: '',
       gender: undefined,
       dob: undefined,
       fontSize: 10,
@@ -64,15 +66,17 @@ export default function AdharCreator() {
   }, [photoUrl]);
 
 
-  const handleRefine = async (field: 'name' | 'address') => {
-    setAiLoading(field);
+  const handleRefine = async () => {
+    setAiLoading(true);
     const { getValues, setValue } = methods;
-    const { name, address } = getValues();
+    const { name, nameHindi, address, addressHindi } = getValues();
     try {
-      const result = await refineDetailsAction({ name, address });
+      const result = await refineDetailsAction({ name, nameHindi, address, addressHindi });
       if (result) {
         setValue('name', result.refinedName, { shouldValidate: true, shouldDirty: true });
+        setValue('nameHindi', result.refinedNameHindi, { shouldValidate: true, shouldDirty: true });
         setValue('address', result.refinedAddress, { shouldValidate: true, shouldDirty: true });
+        setValue('addressHindi', result.refinedAddressHindi, { shouldValidate: true, shouldDirty: true });
         toast({
           title: "Content Refined",
           description: "The details have been successfully refined by AI.",
@@ -87,7 +91,7 @@ export default function AdharCreator() {
         description: "Could not refine details. Please try again.",
       });
     } finally {
-      setAiLoading(null);
+      setAiLoading(false);
     }
   };
 
@@ -108,8 +112,9 @@ export default function AdharCreator() {
     }
 
     try {
+      // A4 size in mm: 210 x 297
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
@@ -119,25 +124,26 @@ export default function AdharCreator() {
         useCORS: true,
         logging: false,
         width: input.offsetWidth,
-        height: input.offsetHeight
+        height: input.offsetHeight,
+        windowWidth: input.scrollWidth,
+        windowHeight: input.scrollHeight,
       });
 
       const imgData = canvas.toDataURL('image/png');
       
-      // Standard A4 landscape dimensions: 297mm x 210mm
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const pdfWidth = 210;
+      const pdfHeight = 297;
       
-      // The preview is roughly 2:1 aspect ratio (two cards side-by-side).
-      // Let's aim for a total width of 171.2mm (85.6mm * 2)
-      const cardBlockWidth = 190;
-      const cardBlockHeight = (canvas.height * cardBlockWidth) / canvas.width;
+      // Target width of 8.5in = 215.9mm. Let's use full width with margin.
+      const margin = 10;
+      const contentWidth = pdfWidth - (margin * 2);
+      const contentHeight = (canvas.height * contentWidth) / canvas.width;
 
-      // Center the card block on the A4 page
-      const x = (pdfWidth - cardBlockWidth) / 2;
-      const y = (pdfHeight - cardBlockHeight) / 2;
+      const x = margin;
+      // Position it a bit from the top
+      const y = 20; 
       
-      pdf.addImage(imgData, 'PNG', x, y, cardBlockWidth, cardBlockHeight);
+      pdf.addImage(imgData, 'PNG', x, y, contentWidth, contentHeight);
       pdf.save(`${name.replace(/\s/g, '_') || 'adhar'}_card.pdf`);
 
     } catch (error) {
@@ -193,5 +199,3 @@ export default function AdharCreator() {
     </FormProvider>
   );
 }
-
-    
