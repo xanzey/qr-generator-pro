@@ -25,8 +25,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, QrCode, Link, MessageSquare, Phone, Mail, Instagram, Type, Wifi, Briefcase, Calendar, Star, Bitcoin } from 'lucide-react';
+import { Download, QrCode, Link, MessageSquare, Phone, Mail, Instagram, Type } from 'lucide-react';
 import Image from 'next/image';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 const qrTypes = ['text', 'url', 'whatsapp', 'phone', 'email', 'instagram'] as const;
 type QrType = (typeof qrTypes)[number];
@@ -120,9 +121,15 @@ export default function QrGenerator() {
 
             // Draw logo in the center
             const logo = new window.Image();
-            const iconSvg = new Blob([
-                `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">${(typeConfig[currentQrType].icon as any).props.children.map((child: any) => `<${child.type} ${Object.entries(child.props).map(([key, val]) => `${key}="${val}"`).join(' ')}/>`).join('')}</svg>`
-            ], {type: 'image/svg+xml'});
+            const iconElement = typeConfig[currentQrType].icon;
+            const iconHtml = renderToStaticMarkup(iconElement);
+            // The renderToStaticMarkup might return a full SVG tag or just the inner elements
+            const svgContent = iconHtml.includes('<svg') 
+                ? iconHtml 
+                : `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${iconHtml}</svg>`;
+            
+            const iconSvg = new Blob([svgContent], {type: 'image/svg+xml'});
+
             const logoUrl = URL.createObjectURL(iconSvg);
 
             logo.src = logoUrl;
