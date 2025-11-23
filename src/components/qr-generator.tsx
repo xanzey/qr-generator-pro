@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import QRCode from 'qrcode';
@@ -25,15 +25,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, QrCode, Link, MessageSquare, Phone, Mail, Instagram } from 'lucide-react';
+import { Download, QrCode, Link, MessageSquare, Phone, Mail, Instagram, Type, Wifi, Briefcase, Calendar, Star, Bitcoin } from 'lucide-react';
 import Image from 'next/image';
 
 const qrTypes = ['text', 'url', 'whatsapp', 'phone', 'email', 'instagram'] as const;
 type QrType = (typeof qrTypes)[number];
-
-const qrStyles = ['none', 'flowers', 'puppy'] as const;
-type QrStyle = (typeof qrStyles)[number];
-
 
 const schema = z.object({
   qrType: z.enum(qrTypes),
@@ -48,8 +44,8 @@ const schema = z.object({
 
 type QrFormData = z.infer<typeof schema>;
 
-const typeConfig = {
-  text: { label: 'Text', icon: <MessageSquare /> },
+const typeConfig: Record<QrType, { label: string; icon: React.ReactElement }> = {
+  text: { label: 'Text', icon: <Type /> },
   url: { label: 'URL', icon: <Link /> },
   whatsapp: { label: 'WhatsApp', icon: <MessageSquare /> },
   phone: { label: 'Phone', icon: <Phone /> },
@@ -57,18 +53,13 @@ const typeConfig = {
   instagram: { label: 'Instagram', icon: <Instagram /> },
 };
 
-const styleConfig = {
-    none: { label: 'Default' },
-    flowers: { label: 'Flowers', url: 'https://picsum.photos/seed/flower/400/400' },
-    puppy: { label: 'Puppy', url: 'https://picsum.photos/seed/puppy/400/400' },
-};
 
 export default function QrGenerator() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [currentQrType, setCurrentQrType] = useState<QrType>('text');
-  const [currentQrStyle, setCurrentQrStyle] = useState<QrStyle>('none');
   const [qrColor, setQrColor] = useState('#000000');
   const [qrBgColor, setQrBgColor] = useState('#FFFFFF');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const methods = useForm<QrFormData>({
     resolver: zodResolver(schema),
@@ -77,7 +68,7 @@ export default function QrGenerator() {
     },
   });
 
-  const { register, watch, handleSubmit } = methods;
+  const { register, watch, handleSubmit, setValue } = methods;
 
   const watchedValues = watch();
 
@@ -109,69 +100,69 @@ export default function QrGenerator() {
           }
           break;
       }
+      
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
       if (dataToEncode) {
         try {
-          const url = await QRCode.toDataURL(dataToEncode, {
-            errorCorrectionLevel: 'H',
-            margin: 2,
-            width: 256,
-            color: {
-                dark: qrColor,
-                light: currentQrStyle === 'none' ? qrBgColor : '#0000',
-            }
-          });
-          setQrCodeUrl(url);
+            await QRCode.toCanvas(canvas, dataToEncode, {
+                errorCorrectionLevel: 'H',
+                margin: 2,
+                width: 256,
+                color: {
+                    dark: qrColor,
+                    light: qrBgColor,
+                }
+            });
+
+            // Draw logo in the center
+            const logo = new window.Image();
+            const iconSvg = new Blob([
+                `<?xml version="1.0" encoding="UTF-8"?><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">${(typeConfig[currentQrType].icon as any).props.children.map((child: any) => `<${child.type} ${Object.entries(child.props).map(([key, val]) => `${key}="${val}"`).join(' ')}/>`).join('')}</svg>`
+            ], {type: 'image/svg+xml'});
+            const logoUrl = URL.createObjectURL(iconSvg);
+
+            logo.src = logoUrl;
+            logo.onload = () => {
+                const logoSize = canvas.width / 5;
+                const logoX = (canvas.width - logoSize) / 2;
+                const logoY = (canvas.height - logoSize) / 2;
+                
+                // Clear a white square behind the logo
+                ctx.fillStyle = qrBgColor;
+                ctx.fillRect(logoX -5, logoY - 5, logoSize + 10, logoSize + 10);
+                
+                ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+                setQrCodeUrl(canvas.toDataURL('image/png'));
+                URL.revokeObjectURL(logoUrl);
+            };
+            logo.onerror = () => URL.revokeObjectURL(logoUrl);
+
         } catch (err) {
           console.error(err);
           setQrCodeUrl('');
+          ctx.clearRect(0,0,canvas.width, canvas.height);
         }
       } else {
         setQrCodeUrl('');
+        ctx.clearRect(0,0,canvas.width, canvas.height);
       }
     };
 
     generateQrCode();
-  }, [watchedValues, qrColor, qrBgColor, currentQrStyle]);
+  }, [watchedValues, qrColor, qrBgColor, currentQrType]);
 
   const handleDownload = () => {
     if (!qrCodeUrl) return;
-
-    if (currentQrStyle === 'none') {
-        const link = document.createElement('a');
-        link.href = qrCodeUrl;
-        link.download = `qrcode-${currentQrType}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } else {
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        const bgImage = new window.Image();
-        bgImage.crossOrigin = "Anonymous";
-        bgImage.src = styleConfig[currentQrStyle].url;
-        
-        bgImage.onload = () => {
-            ctx.drawImage(bgImage, 0, 0, 256, 256);
-
-            const qrImage = new window.Image();
-            qrImage.src = qrCodeUrl;
-            qrImage.onload = () => {
-                ctx.drawImage(qrImage, 0, 0, 256, 256);
-                const finalUrl = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.href = finalUrl;
-                link.download = `qrcode-styled-${currentQrType}.png`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-    }
+    const link = document.createElement('a');
+    link.href = qrCodeUrl;
+    link.download = `qrcode-${currentQrType}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
   const renderFormFields = () => {
@@ -221,7 +212,7 @@ export default function QrGenerator() {
                       defaultValue={currentQrType}
                       onValueChange={(value: QrType) => {
                         setCurrentQrType(value);
-                        methods.setValue('qrType', value);
+                        setValue('qrType', value);
                       }}
                     >
                       <SelectTrigger>
@@ -245,24 +236,7 @@ export default function QrGenerator() {
                   </div>
                 </div>
               </form>
-               <div>
-                    <Label className="mb-2 block font-medium">Style</Label>
-                    <Select
-                      defaultValue={currentQrStyle}
-                      onValueChange={(value: QrStyle) => setCurrentQrStyle(value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select style" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {qrStyles.map((style) => (
-                          <SelectItem key={style} value={style}>
-                            {styleConfig[style].label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                </div>
+               
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="qrColor" className="mb-2 block font-medium">QR Color</Label>
@@ -270,7 +244,7 @@ export default function QrGenerator() {
                     </div>
                     <div>
                         <Label htmlFor="qrBgColor" className="mb-2 block font-medium">Background</Label>
-                         <Input id="qrBgColor" type="color" value={qrBgColor} onChange={(e) => setQrBgColor(e.target.value)} className="p-1" disabled={currentQrStyle !== 'none'}/>
+                         <Input id="qrBgColor" type="color" value={qrBgColor} onChange={(e) => setQrBgColor(e.target.value)} className="p-1" />
                     </div>
                 </div>
             </CardContent>
@@ -284,13 +258,9 @@ export default function QrGenerator() {
         <div className="bg-primary/10 p-8 flex items-center justify-center">
              <div 
                 className="w-64 h-64 rounded-lg shadow-inner flex items-center justify-center relative overflow-hidden"
-                style={{
-                    backgroundColor: currentQrStyle === 'none' ? qrBgColor : 'transparent',
-                    backgroundImage: currentQrStyle !== 'none' ? `url(${styleConfig[currentQrStyle].url})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                }}
+                style={{ backgroundColor: qrBgColor }}
             >
+                <canvas ref={canvasRef} width="256" height="256" className="absolute hidden" />
                 {qrCodeUrl ? (
                     <Image src={qrCodeUrl} alt="Generated QR Code" width={256} height={256} className="absolute inset-0"/>
                 ) : (
