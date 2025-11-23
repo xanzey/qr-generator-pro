@@ -13,7 +13,7 @@ import AdharCardPreview from "@/components/adhar-card-preview";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-rede";
+import { Download, Loader2 } from "lucide-react";
 
 export default function AdharCreator() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
