@@ -1,7 +1,9 @@
-import AdharCreator from '@/components/adhar-creator';
+import QrGenerator from '@/components/qr-generator';
 
 export default function Home() {
   return (
-    <AdharCreator />
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <QrGenerator />
+    </div>
   );
 }
