@@ -107,16 +107,34 @@ export default function AdharCreator() {
     }
 
     try {
-      const canvas = await html2canvas(input, { scale: 3, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
-      
+       // A4 size in mm: 210 x 297
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'portrait',
         unit: 'mm',
-        format: [85.6, 53.98] // Credit card size
+        format: 'a4'
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, 85.6, 53.98);
+      const canvas = await html2canvas(input, { 
+        scale: 3, // Higher scale for better quality
+        useCORS: true,
+        logging: true,
+        width: input.offsetWidth,
+        height: input.offsetHeight
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgProps = pdf.getImageProperties(imgData);
+      
+      // Aadhar card standard size is 85.6mm x 53.98mm.
+      // The generated preview contains two parts, so height is doubled.
+      const cardWidth = 85.6;
+      const cardHeight = (imgProps.height * cardWidth) / imgProps.width;
+      
+      // Center the card on the A4 page
+      const x = (pdf.internal.pageSize.getWidth() - cardWidth) / 2;
+      const y = (pdf.internal.pageSize.getHeight() - cardHeight) / 2;
+      
+      pdf.addImage(imgData, 'PNG', x, y, cardWidth, cardHeight);
       pdf.save(`${name.replace(/\s/g, '_') || 'adhar'}_card.pdf`);
 
     } catch (error) {
